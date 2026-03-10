@@ -25,9 +25,7 @@ Author: Hongrui Zheng
 '''
 
 # gym imports
-import gym
-from gym import error, spaces, utils
-from gym.utils import seeding
+import gymnasium as gym
 
 # base classes
 from f110_gym.envs.base_classes import Simulator, Integrator
@@ -64,7 +62,7 @@ class F110Env(gym.Env):
         
             map_ext (str, default='png'): image extension of the map image file. For example 'png', 'pgm'
         
-            params (dict, default={'mu': 1.0489, 'C_Sf':, 'C_Sr':, 'lf': 0.15875, 'lr': 0.17145, 'h': 0.074, 'm': 3.74, 'I': 0.04712, 's_min': -0.4189, 's_max': 0.4189, 'sv_min': -3.2, 'sv_max': 3.2, 'v_switch':7.319, 'a_max': 9.51, 'v_min':-5.0, 'v_max': 20.0, 'width': 0.31, 'length': 0.58}): dictionary of vehicle parameters.
+            params (dict, default={'mu': 1.0489, 'C_Sf':, 'C_Sr':, 'lf': 0.15875, 'lr': 0.17145, 'h': 0.074, 'm': 3.74, 'I': 0.04712, 's_min': -0.4189, 's_max': 0.4189, 'sv_min': -3.2, 'sv_max': 3.2, 'v_switch':7.319, 'a_max': 9.51, 'v_min':-5.0, 'v_max': 20.0, 'width': 0.31, 'length': 0.58, 'laser_distance': 0.27}): dictionary of vehicle parameters.
             mu: surface friction coefficient
             C_Sf: Cornering stiffness coefficient, front
             C_Sr: Cornering stiffness coefficient, rear
@@ -83,14 +81,13 @@ class F110Env(gym.Env):
             v_max: Maximum longitudinal velocity
             width: width of the vehicle in meters
             length: length of the vehicle in meters
+            laser_distance: distance from the rear axis to the LiDAR sensor in meters
 
             num_agents (int, default=2): number of agents in the environment
 
             timestep (float, default=0.01): physics timestep
 
             ego_idx (int, default=0): ego's index in list of agents
-            
-            lidar_dist (float, default=0): vertical distance between LiDAR and backshaft
     """
     metadata = {'render.modes': ['human', 'human_fast']}
 
@@ -126,8 +123,10 @@ class F110Env(gym.Env):
 
         try:
             self.params = kwargs['params']
+            if 'laser_distance' not in self.params:
+                self.params['laser_distance'] = 0.27
         except:
-            self.params = {'mu': 1.0489, 'C_Sf': 4.718, 'C_Sr': 5.4562, 'lf': 0.15875, 'lr': 0.17145, 'h': 0.074, 'm': 3.74, 'I': 0.04712, 's_min': -0.4189, 's_max': 0.4189, 'sv_min': -3.2, 'sv_max': 3.2, 'v_switch': 7.319, 'a_max': 9.51, 'v_min':-5.0, 'v_max': 20.0, 'width': 0.31, 'length': 0.58}
+            self.params = {'mu': 1.0489, 'C_Sf': 4.718, 'C_Sr': 5.4562, 'lf': 0.15875, 'lr': 0.17145, 'h': 0.074, 'm': 3.74, 'I': 0.04712, 's_min': -0.4189, 's_max': 0.4189, 'sv_min': -3.2, 'sv_max': 3.2, 'v_switch': 7.319, 'a_max': 9.51, 'v_min':-5.0, 'v_max': 20.0, 'width': 0.31, 'length': 0.58, 'laser_distance': 0.27}
 
         # simulation parameters
         try:
@@ -151,12 +150,6 @@ class F110Env(gym.Env):
             self.integrator = kwargs['integrator']
         except:
             self.integrator = Integrator.RK4
-            
-        # default LiDAR position
-        try:
-            self.lidar_dist = kwargs['lidar_dist']
-        except:
-            self.lidar_dist = 0.0
 
         # radius to consider done
         self.start_thresh = 0.5  # 10cm
@@ -189,7 +182,7 @@ class F110Env(gym.Env):
         self.start_rot = np.eye(2)
 
         # initiate stuff
-        self.sim = Simulator(self.params, self.num_agents, self.seed, time_step=self.timestep, integrator=self.integrator, lidar_dist=self.lidar_dist)
+        self.sim = Simulator(self.params, self.num_agents, self.seed, time_step=self.timestep, integrator=self.integrator)
         self.sim.set_map(self.map_path, self.map_ext)
 
         # stateful observations for rendering
